@@ -25,6 +25,7 @@ public class SceneRenderer : MonoBehaviour {
     private Process boidsProc;
     private bool running = true;
     private float updateCounter = 0.0f;
+    private int updatesReceived = 0;
 
 	// Use this for initialization
 	void Start ()
@@ -45,10 +46,12 @@ public class SceneRenderer : MonoBehaviour {
 	void Update ()
     {
         updateCounter += Time.deltaTime;
-        if (updateCounter > 1.0f)
+        updatesReceived += newObjects.Count;
+        if (updateCounter > 10.0f)
         {
+            UnityEngine.Debug.Log(String.Format("Average updates per second: {0}", updatesReceived / 10.0));
             updateCounter = 0.0f;
-            UnityEngine.Debug.Log(String.Format("Available updates: {0}", newObjects.Count));
+            updatesReceived = 0;
         }
         while (newObjects.Count > 0)
         {
