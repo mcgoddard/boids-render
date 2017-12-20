@@ -1,1 +1,1 @@
-E:\Programming\Rust\rust-boids\target\release\rust-boids.exe: E:\Programming\Rust\rust-boids\src\main.rs
+F:\Projects\rust-boids\target\release\rust-boids.exe: F:\Projects\rust-boids\src\main.rs

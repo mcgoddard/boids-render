@@ -64,7 +64,8 @@ public class SceneRenderer : MonoBehaviour {
                     float xD = newDirection["x"].Value<float>();
                     float yD = newDirection["y"].Value<float>();
                     float zD = newDirection["z"].Value<float>();
-                    objects[id].transform.localRotation = Quaternion.Euler(xD, yD, zD);
+                    Vector3 newDirectionVec = new Vector3(xD, yD, zD);
+                    objects[id].transform.rotation = Quaternion.LookRotation(newDirectionVec, Vector3.up);
                 }
                 catch (Exception ex)
                 {
