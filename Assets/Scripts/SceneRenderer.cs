@@ -1,7 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
@@ -50,7 +49,8 @@ public class SceneRenderer : MonoBehaviour {
                 var id = (long)newObject["id"];
                 if (!objects.ContainsKey(id))
                 {
-                    objects.Add((long)newObject["id"], InitialiseBoid((string)newObject["colour"]));
+                    objects.Add(id, InitialiseBoid((string)newObject["colour"]));
+                    objects[id].name = id.ToString();
                 }
                 var newPos = (IDictionary<string, JToken>)newObject["position"];
                 var newDirection = (IDictionary<string, JToken>)newObject["direction"];
@@ -64,9 +64,12 @@ public class SceneRenderer : MonoBehaviour {
                     float xD = newDirection["x"].Value<float>();
                     float yD = newDirection["y"].Value<float>();
                     float zD = newDirection["z"].Value<float>();
-                    objects[id].transform.rotation = Quaternion.Euler(xD, yD, zD);
+                    objects[id].transform.localRotation = Quaternion.Euler(xD, yD, zD);
                 }
-                catch (Exception) { }
+                catch (Exception ex)
+                {
+                    UnityEngine.Debug.Log(String.Format("Exception caught processing boid:\n{0}", ex.Message));
+                }
             }
         }
     }
@@ -101,19 +104,19 @@ public class SceneRenderer : MonoBehaviour {
         {
             newBoid = GameObject.Instantiate(GreenBoid);
         }
-        if (colour.Equals("Blue"))
+        else if (colour.Equals("Blue"))
         {
             newBoid = GameObject.Instantiate(BlueBoid);
         }
-        if (colour.Equals("Red"))
+        else if (colour.Equals("Red"))
         {
             newBoid = GameObject.Instantiate(RedBoid);
         }
-        if (colour.Equals("Orange"))
+        else if (colour.Equals("Orange"))
         {
             newBoid = GameObject.Instantiate(OrangeBoid);
         }
-        if (colour.Equals("Purple"))
+        else if (colour.Equals("Purple"))
         {
             newBoid = GameObject.Instantiate(PurpleBoid);
         }
