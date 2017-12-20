@@ -1,8 +1,10 @@
 ﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Bson;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -22,6 +24,7 @@ public class SceneRenderer : MonoBehaviour {
     private Thread readThread;
     private Process boidsProc;
     private bool running = true;
+    private float updateCounter = 0.0f;
 
 	// Use this for initialization
 	void Start ()
@@ -41,6 +44,12 @@ public class SceneRenderer : MonoBehaviour {
 	// Update is called once per frame
 	void Update ()
     {
+        updateCounter += Time.deltaTime;
+        if (updateCounter > 1.0f)
+        {
+            updateCounter = 0.0f;
+            UnityEngine.Debug.Log(String.Format("Available updates: {0}", newObjects.Count));
+        }
         while (newObjects.Count > 0)
         {
             var newObject = newObjects.Dequeue();
@@ -88,6 +97,17 @@ public class SceneRenderer : MonoBehaviour {
         {
             IPEndPoint endpoint = new IPEndPoint(IPAddress.Loopback, 0);
             byte[] receiveBytes = udp.Receive(ref endpoint);
+            //MemoryStream ms = new MemoryStream(receiveBytes);
+            //using (BsonReader reader = new BsonReader(ms))
+            //{
+            //    JsonSerializer serializer = new JsonSerializer();
+            //    Dictionary<string, object> deserialisedObj = serializer.Deserialize<Dictionary<string, object>>(reader);
+            //    if (deserialisedObj.ContainsKey("id"))
+            //    {
+            //        long id = (long)deserialisedObj["id"];
+            //        newObjects.Enqueue(deserialisedObj);
+            //    }
+            //}
             string serialisedObj = System.Text.Encoding.Default.GetString(receiveBytes);
             Dictionary<string, object> deserialisedObj = JsonConvert.DeserializeObject<Dictionary<string, object>>(serialisedObj);
             if (deserialisedObj.ContainsKey("id"))
