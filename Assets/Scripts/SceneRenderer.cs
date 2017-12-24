@@ -24,10 +24,12 @@ public class SceneRenderer : MonoBehaviour {
     private Dictionary<long, Dictionary<string, object>> states;
     private Thread readThread;
     private Thread stdoutThread;
+    private Thread stderrThread;
     private Process boidsProc;
     private bool running = true;
     private float updateCounter = 0.0f;
     private int updatesReceived = 0;
+    private int updatesCalled = 0;
 
 	// Use this for initialization
 	void Start ()
@@ -53,20 +55,27 @@ public class SceneRenderer : MonoBehaviour {
             throw new Exception(String.Format("No boids build available for unknown platform: {0}", Application.platform));
         }
         boidsProc.StartInfo.CreateNoWindow = true;
+        boidsProc.StartInfo.RedirectStandardOutput = true;
+        boidsProc.StartInfo.RedirectStandardError = true;
         boidsProc.Start();
         stdoutThread = new Thread(StdoutListener);
         stdoutThread.Start();
+        stderrThread = new Thread(StderrListener);
+        stderrThread.Start();
     }
 	
 	// Update is called once per frame
 	void Update ()
     {
         updateCounter += Time.deltaTime;
+        updatesCalled += 1;
         if (updateCounter > 10.0f)
         {
-            UnityEngine.Debug.Log(String.Format("Average updates per second: {0}", updatesReceived / 10.0));
+            UnityEngine.Debug.Log(String.Format("Average states received per second: {0}", updatesReceived / 10.0));
+            UnityEngine.Debug.Log(String.Format("Average frames processed per second: {0}", updatesCalled / 10.0));
             updateCounter = 0.0f;
             updatesReceived = 0;
+            updatesCalled = 0;
         }
         while (newObjects.Count > 0)
         {
@@ -148,8 +157,18 @@ public class SceneRenderer : MonoBehaviour {
         var stdoutStream = boidsProc.StandardOutput;
         while (running)
         {
-            var msg = String.Format("rust-boids: {0}", stdoutStream.ReadLine());
-            UnityEngine.Debug.Log(msg);
+            var msg = stdoutStream.ReadLine();
+            UnityEngine.Debug.Log(String.Format("rust-boids: stdout: {0}", msg));
+        }
+    }
+
+    private void StderrListener()
+    {
+        var stderrStream = boidsProc.StandardError;
+        while (running)
+        {
+            var msg = stderrStream.ReadLine();
+            UnityEngine.Debug.Log(String.Format("rust-boids: stderr: {0}", msg));
         }
     }
 
