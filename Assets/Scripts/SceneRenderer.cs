@@ -19,9 +19,9 @@ public class SceneRenderer : MonoBehaviour {
     public GameObject YellowBoid;
 
     private UdpClient udp;
-    private Queue<Dictionary<string, object>> newObjects;
+    private Queue<Boid> newObjects;
     private List<GameObject> objects;
-    private Dictionary<long, Dictionary<string, object>> states;
+    private Dictionary<long, Boid> states;
     private Thread readThread;
     private Thread stdoutThread;
     private Thread stderrThread;
@@ -30,13 +30,20 @@ public class SceneRenderer : MonoBehaviour {
     private float updateCounter = 0.0f;
     private int updatesReceived = 0;
     private int updatesCalled = 0;
+    private class Boid 
+    {
+        public long id { get; set; }
+        public string colour { get; set; }
+        public Vector3 position { get; set; }
+        public Vector3 direction { get; set; }
+    }
 
 	// Use this for initialization
 	void Start ()
     {
-        newObjects = new Queue<Dictionary<string, object>>();
+        newObjects = new Queue<Boid>();
         objects = new List<GameObject>();
-        states = new Dictionary<long, Dictionary<string, object>>();
+        states = new Dictionary<long, Boid>();
         udp = new UdpClient(4794);
         readThread = new Thread(UdpListener);
         readThread.Start();
@@ -80,12 +87,12 @@ public class SceneRenderer : MonoBehaviour {
         while (newObjects.Count > 0)
         {
             var newObject = newObjects.Dequeue();
-            if (newObject != null && newObject.ContainsKey("id") && newObject["id"] != null)
+            if (newObject != null)
             {
-                var id = (long)newObject["id"];
+                var id = newObject.id;
                 if (!states.ContainsKey(id))
                 {
-                    var newBoid = InitialiseBoid((string)newObject["colour"]);
+                    var newBoid = InitialiseBoid(newObject.colour);
                     newBoid.name = id.ToString();
                     objects.Add(newBoid);
                     states.Add(id, newObject);
@@ -96,20 +103,12 @@ public class SceneRenderer : MonoBehaviour {
         {
             long id = long.Parse(boid.name);
             var state = states[id];
-            var newPos = (IDictionary<string, JToken>)state["position"];
-            var newDirection = (IDictionary<string, JToken>)state["direction"];
+            var newPos = state.position;
+            var newDirection = state.direction;
             try
             {
-                float x = newPos["x"].Value<float>();
-                float y = newPos["y"].Value<float>();
-                float z = newPos["z"].Value<float>();
-                Vector3 newPosVec = new Vector3(x, y, z);
-                boid.transform.position = newPosVec;
-                float xD = newDirection["x"].Value<float>();
-                float yD = newDirection["y"].Value<float>();
-                float zD = newDirection["z"].Value<float>();
-                Vector3 newDirectionVec = new Vector3(xD, yD, zD);
-                boid.transform.rotation = Quaternion.LookRotation(newDirectionVec, Vector3.up);
+                boid.transform.position = newPos;
+                boid.transform.rotation = Quaternion.LookRotation(newDirection, Vector3.up);
             }
             catch (Exception ex)
             {
@@ -135,20 +134,17 @@ public class SceneRenderer : MonoBehaviour {
             IPEndPoint endpoint = new IPEndPoint(IPAddress.Loopback, 0);
             byte[] receiveBytes = udp.Receive(ref endpoint);
             string serialisedObj = System.Text.Encoding.Default.GetString(receiveBytes);
-            Dictionary<string, object> deserialisedObj = JsonConvert.DeserializeObject<Dictionary<string, object>>(serialisedObj);
-            if (deserialisedObj.ContainsKey("id"))
+            var deserialisedObj = JsonConvert.DeserializeObject<Boid>(serialisedObj);
+            long id = deserialisedObj.id;
+            if (states.ContainsKey(id))
             {
-                long id = (long)deserialisedObj["id"];
-                if (states.ContainsKey(id))
-                {
-                    states[id] = deserialisedObj;
-                }
-                else
-                {
-                    newObjects.Enqueue(deserialisedObj);
-                }
-                updatesReceived++;
+                states[id] = deserialisedObj;
             }
+            else
+            {
+                newObjects.Enqueue(deserialisedObj);
+            }
+            updatesReceived++;
         }
     }
 
