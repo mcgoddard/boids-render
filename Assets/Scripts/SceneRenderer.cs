@@ -23,6 +23,7 @@ public class SceneRenderer : MonoBehaviour {
     private List<GameObject> objects;
     private Dictionary<long, Dictionary<string, object>> states;
     private Thread readThread;
+    private Thread stdoutThread;
     private Process boidsProc;
     private bool running = true;
     private float updateCounter = 0.0f;
@@ -35,7 +36,7 @@ public class SceneRenderer : MonoBehaviour {
         objects = new List<GameObject>();
         states = new Dictionary<long, Dictionary<string, object>>();
         udp = new UdpClient(4794);
-        readThread = new Thread(Listener);
+        readThread = new Thread(UdpListener);
         readThread.Start();
         boidsProc = new Process();
         boidsProc.StartInfo.UseShellExecute = false;
@@ -53,6 +54,8 @@ public class SceneRenderer : MonoBehaviour {
         }
         boidsProc.StartInfo.CreateNoWindow = true;
         boidsProc.Start();
+        stdoutThread = new Thread(StdoutListener);
+        stdoutThread.Start();
     }
 	
 	// Update is called once per frame
@@ -116,7 +119,7 @@ public class SceneRenderer : MonoBehaviour {
         }
     }
 
-    private void Listener()
+    private void UdpListener()
     {
         while (running)
         {
@@ -137,6 +140,16 @@ public class SceneRenderer : MonoBehaviour {
                 }
                 updatesReceived++;
             }
+        }
+    }
+
+    private void StdoutListener()
+    {
+        var stdoutStream = boidsProc.StandardOutput;
+        while (running)
+        {
+            var msg = String.Format("rust-boids: {0}", stdoutStream.ReadLine());
+            UnityEngine.Debug.Log(msg);
         }
     }
 
