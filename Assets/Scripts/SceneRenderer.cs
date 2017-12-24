@@ -20,7 +20,8 @@ public class SceneRenderer : MonoBehaviour {
 
     private UdpClient udp;
     private Queue<Dictionary<string, object>> newObjects;
-    private Dictionary<long, GameObject> objects;
+    private List<GameObject> objects;
+    private Dictionary<long, Dictionary<string, object>> states;
     private Thread readThread;
     private Process boidsProc;
     private bool running = true;
@@ -31,13 +32,25 @@ public class SceneRenderer : MonoBehaviour {
 	void Start ()
     {
         newObjects = new Queue<Dictionary<string, object>>();
-        objects = new Dictionary<long, GameObject>();
+        objects = new List<GameObject>();
+        states = new Dictionary<long, Dictionary<string, object>>();
         udp = new UdpClient(4794);
         readThread = new Thread(Listener);
         readThread.Start();
         boidsProc = new Process();
         boidsProc.StartInfo.UseShellExecute = false;
-        boidsProc.StartInfo.FileName = "rust-boids.exe";
+        if (Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor)
+        {
+            boidsProc.StartInfo.FileName = "boids-builds/windows/rust-boids.exe";
+        }
+        else if (Application.platform == RuntimePlatform.OSXPlayer || Application.platform == RuntimePlatform.OSXEditor)
+        {
+            boidsProc.StartInfo.FileName = "boids-builds/osx/rust-boids";
+        }
+        else
+        {
+            throw new Exception(String.Format("No boids build available for unknown platform: {0}", Application.platform));
+        }
         boidsProc.StartInfo.CreateNoWindow = true;
         boidsProc.Start();
     }
@@ -46,7 +59,6 @@ public class SceneRenderer : MonoBehaviour {
 	void Update ()
     {
         updateCounter += Time.deltaTime;
-        updatesReceived += newObjects.Count;
         if (updateCounter > 10.0f)
         {
             UnityEngine.Debug.Log(String.Format("Average updates per second: {0}", updatesReceived / 10.0));
@@ -59,30 +71,37 @@ public class SceneRenderer : MonoBehaviour {
             if (newObject != null && newObject.ContainsKey("id") && newObject["id"] != null)
             {
                 var id = (long)newObject["id"];
-                if (!objects.ContainsKey(id))
+                if (!states.ContainsKey(id))
                 {
-                    objects.Add(id, InitialiseBoid((string)newObject["colour"]));
-                    objects[id].name = id.ToString();
+                    var newBoid = InitialiseBoid((string)newObject["colour"]);
+                    newBoid.name = id.ToString();
+                    objects.Add(newBoid);
+                    states.Add(id, newObject);
                 }
-                var newPos = (IDictionary<string, JToken>)newObject["position"];
-                var newDirection = (IDictionary<string, JToken>)newObject["direction"];
-                try
-                {
-                    float x = newPos["x"].Value<float>();
-                    float y = newPos["y"].Value<float>();
-                    float z = newPos["z"].Value<float>();
-                    Vector3 newPosVec = new Vector3(x, y, z);
-                    objects[id].transform.position = newPosVec;
-                    float xD = newDirection["x"].Value<float>();
-                    float yD = newDirection["y"].Value<float>();
-                    float zD = newDirection["z"].Value<float>();
-                    Vector3 newDirectionVec = new Vector3(xD, yD, zD);
-                    objects[id].transform.rotation = Quaternion.LookRotation(newDirectionVec, Vector3.up);
-                }
-                catch (Exception ex)
-                {
-                    UnityEngine.Debug.Log(String.Format("Exception caught processing boid:\n{0}", ex.Message));
-                }
+            }
+        }
+        foreach (var boid in objects)
+        {
+            long id = long.Parse(boid.name);
+            var state = states[id];
+            var newPos = (IDictionary<string, JToken>)state["position"];
+            var newDirection = (IDictionary<string, JToken>)state["direction"];
+            try
+            {
+                float x = newPos["x"].Value<float>();
+                float y = newPos["y"].Value<float>();
+                float z = newPos["z"].Value<float>();
+                Vector3 newPosVec = new Vector3(x, y, z);
+                boid.transform.position = newPosVec;
+                float xD = newDirection["x"].Value<float>();
+                float yD = newDirection["y"].Value<float>();
+                float zD = newDirection["z"].Value<float>();
+                Vector3 newDirectionVec = new Vector3(xD, yD, zD);
+                boid.transform.rotation = Quaternion.LookRotation(newDirectionVec, Vector3.up);
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.Log(String.Format("Exception caught processing boid:\n{0}", ex.Message));
             }
         }
     }
@@ -91,7 +110,10 @@ public class SceneRenderer : MonoBehaviour {
     void OnDestroy()
     {
         running = false;
-        boidsProc.Kill();
+        if (boidsProc != null && !boidsProc.HasExited)
+        {
+            boidsProc.Kill();
+        }
     }
 
     private void Listener()
@@ -100,23 +122,20 @@ public class SceneRenderer : MonoBehaviour {
         {
             IPEndPoint endpoint = new IPEndPoint(IPAddress.Loopback, 0);
             byte[] receiveBytes = udp.Receive(ref endpoint);
-            //MemoryStream ms = new MemoryStream(receiveBytes);
-            //using (BsonReader reader = new BsonReader(ms))
-            //{
-            //    JsonSerializer serializer = new JsonSerializer();
-            //    Dictionary<string, object> deserialisedObj = serializer.Deserialize<Dictionary<string, object>>(reader);
-            //    if (deserialisedObj.ContainsKey("id"))
-            //    {
-            //        long id = (long)deserialisedObj["id"];
-            //        newObjects.Enqueue(deserialisedObj);
-            //    }
-            //}
             string serialisedObj = System.Text.Encoding.Default.GetString(receiveBytes);
             Dictionary<string, object> deserialisedObj = JsonConvert.DeserializeObject<Dictionary<string, object>>(serialisedObj);
             if (deserialisedObj.ContainsKey("id"))
             {
                 long id = (long)deserialisedObj["id"];
-                newObjects.Enqueue(deserialisedObj);
+                if (states.ContainsKey(id))
+                {
+                    states[id] = deserialisedObj;
+                }
+                else
+                {
+                    newObjects.Enqueue(deserialisedObj);
+                }
+                updatesReceived++;
             }
         }
     }
