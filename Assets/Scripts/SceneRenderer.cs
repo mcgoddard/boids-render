@@ -158,7 +158,10 @@ public class SceneRenderer : MonoBehaviour {
         while (running)
         {
             var msg = stdoutStream.ReadLine();
-            UnityEngine.Debug.Log(String.Format("rust-boids: stdout: {0}", msg));
+            if (!String.IsNullOrEmpty(msg))
+            {
+                UnityEngine.Debug.Log(String.Format("rust-boids: stdout: {0}", msg));
+            }
         }
     }
 
@@ -168,7 +171,10 @@ public class SceneRenderer : MonoBehaviour {
         while (running)
         {
             var msg = stderrStream.ReadLine();
-            UnityEngine.Debug.Log(String.Format("rust-boids: stderr: {0}", msg));
+            if (!String.IsNullOrEmpty(msg))
+            {
+                UnityEngine.Debug.Log(String.Format("rust-boids: stderr: {0}", msg));
+            }
         }
     }
 
