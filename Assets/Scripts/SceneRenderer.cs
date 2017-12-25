@@ -3,12 +3,14 @@ using Newtonsoft.Json.Bson;
 using Newtonsoft.Json.Linq;
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
 using UnityEngine;
+using System.Threading.Collections;
 
 public class SceneRenderer : MonoBehaviour {
     public GameObject GreenBoid;
@@ -19,17 +21,20 @@ public class SceneRenderer : MonoBehaviour {
     public GameObject YellowBoid;
 
     private UdpClient udp;
-    private Queue<Boid> newObjects;
+    private ConcurrentQueue<Boid> newObjects;
+    private ConcurrentQueue<byte[]> receivedBytes;
     private List<GameObject> objects;
     private Dictionary<long, Boid> states;
     private Thread readThread;
     private Thread stdoutThread;
     private Thread stderrThread;
+    private Thread[] deserializers = new Thread[2];
     private Process boidsProc;
     private bool running = true;
     private float updateCounter = 0.0f;
     private int updatesReceived = 0;
     private int updatesCalled = 0;
+    private int updatesDeserialized = 0;
     private class Boid 
     {
         public long id { get; set; }
@@ -41,10 +46,16 @@ public class SceneRenderer : MonoBehaviour {
 	// Use this for initialization
 	void Start ()
     {
-        newObjects = new Queue<Boid>();
+        receivedBytes = new ConcurrentQueue<byte[]>();
+        newObjects = new ConcurrentQueue<Boid>();
         objects = new List<GameObject>();
         states = new Dictionary<long, Boid>();
         udp = new UdpClient(4794);
+        for (int i = 0; i < deserializers.Length; i++)
+        {
+            deserializers[i] = new Thread(Deserizer);
+            deserializers[i].Start();
+        }
         readThread = new Thread(UdpListener);
         readThread.Start();
         boidsProc = new Process();
@@ -79,15 +90,17 @@ public class SceneRenderer : MonoBehaviour {
         if (updateCounter > 10.0f)
         {
             UnityEngine.Debug.Log(String.Format("Average states received per second: {0}", updatesReceived / 10.0));
+            UnityEngine.Debug.Log(String.Format("Average states deserialized per second: {0}", updatesDeserialized / 10.0));
             UnityEngine.Debug.Log(String.Format("Average frames processed per second: {0}", updatesCalled / 10.0));
             updateCounter = 0.0f;
             updatesReceived = 0;
             updatesCalled = 0;
+            updatesDeserialized = 0;
         }
         while (newObjects.Count > 0)
         {
-            var newObject = newObjects.Dequeue();
-            if (newObject != null)
+            Boid newObject;
+            if (newObjects.TryDequeue(out newObject))
             {
                 var id = newObject.id;
                 if (!states.ContainsKey(id))
@@ -133,18 +146,51 @@ public class SceneRenderer : MonoBehaviour {
         {
             IPEndPoint endpoint = new IPEndPoint(IPAddress.Loopback, 0);
             byte[] receiveBytes = udp.Receive(ref endpoint);
-            string serialisedObj = System.Text.Encoding.Default.GetString(receiveBytes);
-            var deserialisedObj = JsonConvert.DeserializeObject<Boid>(serialisedObj);
-            long id = deserialisedObj.id;
-            if (states.ContainsKey(id))
+            if (receiveBytes != null && receiveBytes.Length > 0)
             {
-                states[id] = deserialisedObj;
+                receivedBytes.Enqueue(receiveBytes);
+                updatesReceived++;
             }
-            else
+        }
+    }
+
+    private void Deserizer()
+    {
+        while (running)
+        {
+            try
             {
-                newObjects.Enqueue(deserialisedObj);
+                byte[] receiveBytes;
+                if (receivedBytes.TryDequeue(out receiveBytes))
+                {
+                    string serialisedObj = System.Text.Encoding.Default.GetString(receiveBytes);
+                    if (!String.IsNullOrEmpty(serialisedObj))
+                    {
+                        var deserialisedObj = JsonConvert.DeserializeObject<Boid>(serialisedObj);
+                        if (deserialisedObj != null)
+                        {
+                            long id = deserialisedObj.id;
+                            if (states.ContainsKey(id))
+                            {
+                                states[id] = deserialisedObj;
+                            }
+                            else
+                            {
+                                newObjects.Enqueue(deserialisedObj);
+                            }
+                            updatesDeserialized++;
+                        }
+                    }
+                }
             }
-            updatesReceived++;
+            catch (InvalidOperationException)
+            {
+                // Ignore (queue is empty)
+            }
+            catch (Exception ex)
+            {
+                UnityEngine.Debug.Log(String.Format("Error in deserializer: {0}", ex.StackTrace));
+            }
         }
     }
 
