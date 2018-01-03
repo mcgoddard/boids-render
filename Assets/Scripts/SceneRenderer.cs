@@ -21,14 +21,14 @@ public class SceneRenderer : MonoBehaviour {
     public GameObject PurpleBoid;
     public GameObject YellowBoid;
 
-    private Dictionary<Int32, GameObject> objects;
-    private Dictionary<Int32, Boid> states;
-    private bool running = true;
     private float updateCounter = 0.0f;
     private int updatesCalled = 0;
-    private int engineSteps = 0;
+    private Dictionary<Int32, GameObject> objects;
     private Thread stateReaderThread;
-    private UIntPtr sim;
+    private volatile Dictionary<Int32, Boid> states;
+    private volatile bool running = true;
+    private volatile int engineSteps = 0;
+    private volatile UIntPtr sim;
 
     // Use this for initialization
     void Start ()
@@ -52,6 +52,18 @@ public class SceneRenderer : MonoBehaviour {
             updateCounter = 0;
             updatesCalled = 0;
             engineSteps = 0;
+        }
+        // Perform update
+        var renderStates = states;
+        foreach (var id in renderStates.Keys)
+        {
+            if (!objects.ContainsKey(id))
+            {
+                var newBoid = InitialiseBoid(renderStates[id].colour);
+                objects.Add(id, newBoid);
+            }
+            objects[id].transform.position = renderStates[id].position;
+            objects[id].transform.rotation = Quaternion.LookRotation(renderStates[id].direction, Vector3.up);
         }
     }
 
@@ -109,32 +121,30 @@ public class SceneRenderer : MonoBehaviour {
     }
 
     // Helper function to create a new boid GameObject in the correct colour
-    private GameObject InitialiseBoid(string colour)
+    private GameObject InitialiseBoid(BoidColourKind colour)
     {
         GameObject newBoid;
-        if (colour.Equals("Green"))
+        switch (colour)
         {
-            newBoid = GameObject.Instantiate(GreenBoid);
-        }
-        else if (colour.Equals("Blue"))
-        {
-            newBoid = GameObject.Instantiate(BlueBoid);
-        }
-        else if (colour.Equals("Red"))
-        {
-            newBoid = GameObject.Instantiate(RedBoid);
-        }
-        else if (colour.Equals("Orange"))
-        {
-            newBoid = GameObject.Instantiate(OrangeBoid);
-        }
-        else if (colour.Equals("Purple"))
-        {
-            newBoid = GameObject.Instantiate(PurpleBoid);
-        }
-        else
-        {
-            newBoid = GameObject.Instantiate(YellowBoid);
+            case BoidColourKind.Green:
+                newBoid = GameObject.Instantiate(GreenBoid);
+                break;
+            case BoidColourKind.Blue:
+                newBoid = GameObject.Instantiate(BlueBoid);
+                break;
+            case BoidColourKind.Red:
+                newBoid = GameObject.Instantiate(RedBoid);
+                break;
+            case BoidColourKind.Orange:
+                newBoid = GameObject.Instantiate(OrangeBoid);
+                break;
+            case BoidColourKind.Purple:
+                newBoid = GameObject.Instantiate(PurpleBoid);
+                break;
+            case BoidColourKind.Yellow:
+            default:
+                newBoid = GameObject.Instantiate(YellowBoid);
+                break;
         }
         return newBoid;
     }
