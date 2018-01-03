@@ -1,7 +1,4 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Bson;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -70,45 +67,20 @@ public class SceneRenderer : MonoBehaviour {
     private void StateReader()
     {
         sim = FFIBridge.newSim();
-        //var cpuCount = Environment.ProcessorCount;
-        //uint collectThreadNum = (uint)(cpuCount >= 2 ? cpuCount - 1 : 1);
         while (running)
         {
             // Step the engine forward once
             UIntPtr result = FFIBridge.step(sim);
             Dictionary<Int32, Boid> newState = new Dictionary<Int32, Boid>();
-            //Task[] collectionTasks = new Task[collectThreadNum];
-            //for (uint i = 0; i < collectThreadNum; i++)
-            //{
-            //    collectionTasks[i] = Task.Run(() => StateCollector(ref newState, (uint)result, i, collectThreadNum));
-            //}
-            //Task.WaitAll(collectionTasks);
             for (uint i = 0; i < (uint)result; i++)
             {
                 Boid b = FFIBridge.getBoid(sim, (UIntPtr)i);
                 newState.Add(b.id, b);
             }
-            //UnityEngine.Debug.Log(String.Format("Number of states collected: {0}", newState.Count));
             states = newState;
             engineSteps++;
         }
         UnityEngine.Debug.Log("Closing state reader thread...");
-    }
-
-    private void StateCollector(ref Dictionary<Int32, Boid> newState, uint max, uint start, uint offset)
-    {
-        for (uint i = start; i < max; i += offset)
-        {
-            try
-            {
-                Boid b = FFIBridge.getBoid(sim, (UIntPtr)i);
-                newState.Add(b.id, b);
-            }
-            catch (Exception ex)
-            {
-                UnityEngine.Debug.Log(String.Format("Collector task exited with exception: {0}", ex.Message));
-            }
-        }
     }
 
     // Called during shutdown
