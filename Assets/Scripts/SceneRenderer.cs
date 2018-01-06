@@ -27,10 +27,12 @@ public class SceneRenderer : MonoBehaviour {
     private volatile bool running = true;
     private volatile int engineSteps = 0;
     private volatile UIntPtr sim;
+    private volatile UIntPtr boidCount;
 
     // Use this for initialization
     void Start ()
     {
+        boidCount = (UIntPtr)PlayerPrefs.GetInt(MenuHandler.countKey, MenuHandler.defaultCount);
         objects = new Dictionary<Int32, GameObject>();
         states = new Dictionary<Int32, Boid>();
         stateReaderThread = new Thread(StateReader);
@@ -67,7 +69,7 @@ public class SceneRenderer : MonoBehaviour {
 
     private void StateReader()
     {
-        sim = FFIBridge.newSim();
+        sim = FFIBridge.newSim(boidCount);
         Stopwatch stopWatch = new Stopwatch();
         stopWatch.Start();
         float timeStep = 0;
@@ -102,6 +104,11 @@ public class SceneRenderer : MonoBehaviour {
                          .ToDictionary(pair => pair.Key, pair => pair.Value);
             states = newState;
             engineSteps++;
+            long elaspsedTime = stopWatch.ElapsedMilliseconds;
+            if (elaspsedTime < 5)
+            {
+                Thread.Sleep((int)(5 - elaspsedTime));
+            }
             timeStep = stopWatch.ElapsedMilliseconds / 1000.0f;
             stopWatch.Restart();
         }

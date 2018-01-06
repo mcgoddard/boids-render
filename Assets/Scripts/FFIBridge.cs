@@ -23,10 +23,14 @@ public struct Boid
     public Int32 id { get; set; }
 }
 
-public static class FFIBridge {
+public static class FFIBridge
+{
 
     [DllImport("rustboidslib")]
-    public static extern UIntPtr newSim();
+    public static extern UIntPtr newSim500();
+
+    [DllImport("rustboidslib")]
+    public static extern UIntPtr newSim(UIntPtr boidCount);
 
     [DllImport("rustboidslib")]
     public static extern UIntPtr step(UIntPtr sim, float frameTime);

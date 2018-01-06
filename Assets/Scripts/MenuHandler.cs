@@ -7,10 +7,13 @@ using UnityEngine.UI;
 
 public class MenuHandler : MonoBehaviour
 {
+    public static readonly string countKey = "boidsCount";
+    public static readonly int defaultCount = 500;
+
     public Text countField;
     public Image countFieldBackground;
 
-    private int boidNum = 500;
+    private int boidNum = defaultCount;
 
 	// Use this for initialization
 	void Start ()
@@ -30,7 +33,7 @@ public class MenuHandler : MonoBehaviour
         }
         else
         {
-            PlayerPrefs.SetInt("boidsCount", boidNum);
+            PlayerPrefs.SetInt(countKey, boidNum);
             Debug.Log(String.Format("Starting with {0} boids", boidNum));
             SceneManager.LoadScene("boids-render", LoadSceneMode.Single);
         }
