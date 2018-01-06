@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657844, g: 0.49641222, b: 0.5748171, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
 --- !u!157 &3
 LightmapSettings:
   m_ObjectHideFlags: 0
@@ -140,12 +140,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 51d95aa8e7b2f134a9802719f5a86d85, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  GreenBoid: {fileID: 1307799970380684, guid: 7a40f930405a18b4399547c189132cfc, type: 2}
-  BlueBoid: {fileID: 1468073309261828, guid: 8a4728f9c2e6ad84db237c0a5b5396b2, type: 2}
-  RedBoid: {fileID: 1048221494314930, guid: 1ff10bfeebe565248bebaba85a63721a, type: 2}
-  OrangeBoid: {fileID: 1770047805029890, guid: 5597122fb24d3ca4db9f5f297b197a96, type: 2}
-  PurpleBoid: {fileID: 1477486757201744, guid: fae5e294524844e498246eca62d6b36b, type: 2}
-  YellowBoid: {fileID: 1818074110865642, guid: 23ddac5ef5db65949a2ed81be3487c24, type: 2}
+  GreenBoid: {fileID: 1035274139866748, guid: 7a40f930405a18b4399547c189132cfc, type: 2}
+  BlueBoid: {fileID: 1416247443017582, guid: 8a4728f9c2e6ad84db237c0a5b5396b2, type: 2}
+  RedBoid: {fileID: 1047124828636998, guid: 1ff10bfeebe565248bebaba85a63721a, type: 2}
+  OrangeBoid: {fileID: 1038561667623260, guid: 5597122fb24d3ca4db9f5f297b197a96, type: 2}
+  PurpleBoid: {fileID: 1728688999412370, guid: fae5e294524844e498246eca62d6b36b, type: 2}
+  YellowBoid: {fileID: 1486249882957454, guid: 23ddac5ef5db65949a2ed81be3487c24, type: 2}
 --- !u!4 &1031726433
 Transform:
   m_ObjectHideFlags: 0

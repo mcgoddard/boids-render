@@ -3,7 +3,7 @@ guid: d54ec11db1bcece4ba14e8a1d949a45a
 timeCreated: 1513712138
 licenseType: Free
 ModelImporter:
-  serializedVersion: 21
+  serializedVersion: 22
   fileIDToRecycleName:
     100000: //RootNode
     100002: Null_1_Cube_1_Cube_11
@@ -11,31 +11,68 @@ ModelImporter:
     100006: Null_1_Loft_NURBS
     100008: Null_1_Loft_NURBS_Cap_1
     100010: Null_1_Loft_NURBS_Cap_2
+    100012: default
     400000: //RootNode
     400002: Null_1_Cube_1_Cube_11
     400004: Null_1_Cube_Cube1
     400006: Null_1_Loft_NURBS
     400008: Null_1_Loft_NURBS_Cap_1
     400010: Null_1_Loft_NURBS_Cap_2
+    400012: default
     2300000: Null_1_Cube_1_Cube_11
     2300002: Null_1_Cube_Cube1
     2300004: Null_1_Loft_NURBS
     2300006: Null_1_Loft_NURBS_Cap_1
     2300008: Null_1_Loft_NURBS_Cap_2
+    2300010: default
     3300000: Null_1_Cube_1_Cube_11
     3300002: Null_1_Cube_Cube1
     3300004: Null_1_Loft_NURBS
     3300006: Null_1_Loft_NURBS_Cap_1
     3300008: Null_1_Loft_NURBS_Cap_2
+    3300010: default
     4300000: Null_1_Cube_1_Cube_11
     4300002: Null_1_Cube_Cube1
     4300004: Null_1_Loft_NURBS
     4300006: Null_1_Loft_NURBS_Cap_1
     4300008: Null_1_Loft_NURBS_Cap_2
+    4300010: default
+  externalObjects:
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Mat
+    second: {fileID: 2100000, guid: cdea78d60bd90264a9e54e402de2e994, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Null_1_Cube_1_Cube_11Mat
+    second: {fileID: 2100000, guid: 940173f2757ab504f88291bd373c2836, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Null_1_Cube_Cube1Mat
+    second: {fileID: 2100000, guid: 2afb0742a2c56114f8dbd266e0645c0f, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Null_1_Loft_NURBSMat
+    second: {fileID: 2100000, guid: 1fbd4eee6204782438cf8b4c901fb432, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Null_1_Loft_NURBS_Cap_1Mat
+    second: {fileID: 2100000, guid: ec7888c9135a6a144bbb03dd7c028d5e, type: 2}
+  - first:
+      type: UnityEngine:Material
+      assembly: UnityEngine.CoreModule
+      name: Null_1_Loft_NURBS_Cap_2Mat
+    second: {fileID: 2100000, guid: d4c6091f239f88f489498e687d5ab33d, type: 2}
   materials:
     importMaterials: 1
     materialName: 0
     materialSearch: 1
+    materialLocation: 0
   animations:
     legacyGenerateAnimations: 4
     bakeSimulation: 0
@@ -48,6 +85,7 @@ ModelImporter:
     animationImportWarnings: 
     animationRetargetingWarnings: 
     animationDoRetargetingWarnings: 0
+    importAnimatedCustomProperties: 0
     animationCompression: 1
     animationRotationError: 0.5
     animationPositionError: 0.5
@@ -59,7 +97,7 @@ ModelImporter:
     isReadable: 1
   meshes:
     lODScreenPercentages: []
-    globalScale: 1
+    globalScale: 0.01
     meshCompression: 0
     addColliders: 0
     importVisibility: 1
@@ -72,6 +110,8 @@ ModelImporter:
     optimizeMeshForGPU: 1
     keepQuads: 0
     weldVertices: 1
+    preserveHierarchy: 0
+    indexFormat: 1
     secondaryUVAngleDistortion: 8
     secondaryUVAreaDistortion: 15.000001
     secondaryUVHardAngle: 88
