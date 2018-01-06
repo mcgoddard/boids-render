@@ -29,7 +29,7 @@ public static class FFIBridge {
     public static extern UIntPtr newSim();
 
     [DllImport("rustboidslib")]
-    public static extern UIntPtr step(UIntPtr sim);
+    public static extern UIntPtr step(UIntPtr sim, float frameTime);
 
     [DllImport("rustboidslib")]
     public static extern Boid getBoid(UIntPtr sim, UIntPtr index);

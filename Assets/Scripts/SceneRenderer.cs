@@ -67,10 +67,13 @@ public class SceneRenderer : MonoBehaviour {
     private void StateReader()
     {
         sim = FFIBridge.newSim();
+        Stopwatch stopWatch = new Stopwatch();
+        stopWatch.Start();
+        float timeStep = 0;
         while (running)
         {
             // Step the engine forward once
-            UIntPtr result = FFIBridge.step(sim);
+            UIntPtr result = FFIBridge.step(sim, timeStep);
             Dictionary<Int32, Boid> newState = new Dictionary<Int32, Boid>();
             for (uint i = 0; i < (uint)result; i++)
             {
@@ -79,6 +82,8 @@ public class SceneRenderer : MonoBehaviour {
             }
             states = newState;
             engineSteps++;
+            timeStep = stopWatch.ElapsedMilliseconds / 1000.0f;
+            stopWatch.Restart();
         }
         UnityEngine.Debug.Log("Closing state reader thread...");
     }
