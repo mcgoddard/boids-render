@@ -9,6 +9,7 @@ using System.Threading;
 using System.Runtime.InteropServices;
 using UnityEngine;
 using System.Threading.Tasks;
+using System.Linq;
 
 public class SceneRenderer : MonoBehaviour {
     public GameObject GreenBoid;
@@ -75,11 +76,30 @@ public class SceneRenderer : MonoBehaviour {
             // Step the engine forward once
             UIntPtr result = FFIBridge.step(sim, timeStep);
             Dictionary<Int32, Boid> newState = new Dictionary<Int32, Boid>();
-            for (uint i = 0; i < (uint)result; i++)
+            int gathererCount;
+            if (Environment.ProcessorCount < 2)
             {
-                Boid b = FFIBridge.getBoid(sim, (UIntPtr)i);
-                newState.Add(b.id, b);
+                gathererCount = 1;
             }
+            else
+            {
+                gathererCount = Environment.ProcessorCount - 1;
+            }
+            var taskCount = (uint)result / gathererCount;
+            Task<Dictionary<Int32, Boid>>[] gatheredStates = new Task<Dictionary<Int32, Boid>>[gathererCount];
+            for (int i = 0; i < gathererCount; i++)
+            {
+                uint start = (uint)(i * taskCount);
+                uint end = (uint)(taskCount * (i + 1));
+                if (i == gathererCount - 1)
+                {
+                    end = (uint)result;
+                }
+                gatheredStates[i] = Task.Run(() => stateGatherer(sim, start, end));
+            }
+            Task.WaitAll(gatheredStates);
+            newState = gatheredStates.Select(t => t.Result).SelectMany(dict => dict)
+                         .ToDictionary(pair => pair.Key, pair => pair.Value);
             states = newState;
             engineSteps++;
             timeStep = stopWatch.ElapsedMilliseconds / 1000.0f;
@@ -124,5 +144,16 @@ public class SceneRenderer : MonoBehaviour {
                 break;
         }
         return newBoid;
+    }
+
+    private Dictionary<Int32, Boid> stateGatherer(UIntPtr sim, uint start, uint end)
+    {
+        Dictionary<Int32, Boid> states = new Dictionary<int, Boid>();
+        for (uint i = start; i < end; i++)
+        {
+            Boid b = FFIBridge.getBoid(sim, (UIntPtr)i);
+            states.Add(b.id, b);
+        }
+        return states;
     }
 }
