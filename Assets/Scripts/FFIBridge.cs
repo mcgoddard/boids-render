@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections;
-using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
@@ -12,6 +10,13 @@ public enum BoidColourKind
     Orange,
     Purple,
     Yellow
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct BoidObj
+{
+    public UInt64 id;
+    public Boid boid;
 }
 
 [StructLayout(LayoutKind.Sequential)]
@@ -36,7 +41,7 @@ public static class FFIBridge
     public static extern UIntPtr step(UIntPtr sim, float frameTime);
 
     [DllImport("rustboidslib")]
-    public static extern Boid getBoid(UIntPtr sim, UIntPtr index);
+    public static extern BoidObj getBoid(UIntPtr sim, UIntPtr index);
 
     [DllImport("rustboidslib")]
     public static extern void destroySim(UIntPtr sim);

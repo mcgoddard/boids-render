@@ -1,12 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.IO;
-using System.Net;
-using System.Net.Sockets;
 using System.Threading;
-using System.Runtime.InteropServices;
 using UnityEngine;
 using System.Threading.Tasks;
 using System.Linq;
@@ -21,9 +16,9 @@ public class SceneRenderer : MonoBehaviour {
 
     private float updateCounter = 0.0f;
     private int updatesCalled = 0;
-    private Dictionary<Int32, GameObject> objects;
+    private Dictionary<UInt64, GameObject> objects;
     private Thread stateReaderThread;
-    private volatile Dictionary<Int32, Boid> states;
+    private volatile Dictionary<UInt64, Boid> states;
     private volatile bool running = true;
     private volatile int engineSteps = 0;
     private volatile UIntPtr sim;
@@ -33,8 +28,8 @@ public class SceneRenderer : MonoBehaviour {
     void Start ()
     {
         boidCount = (UIntPtr)PlayerPrefs.GetInt(MenuHandler.countKey, MenuHandler.defaultCount);
-        objects = new Dictionary<Int32, GameObject>();
-        states = new Dictionary<Int32, Boid>();
+        objects = new Dictionary<UInt64, GameObject>();
+        states = new Dictionary<UInt64, Boid>();
         stateReaderThread = new Thread(StateReader);
         stateReaderThread.Start();
     }
@@ -77,7 +72,7 @@ public class SceneRenderer : MonoBehaviour {
         {
             // Step the engine forward once
             UIntPtr result = FFIBridge.step(sim, timeStep);
-            Dictionary<Int32, Boid> newState = new Dictionary<Int32, Boid>();
+            Dictionary<UInt64, Boid> newState = new Dictionary<UInt64, Boid>();
             int gathererCount;
             if (Environment.ProcessorCount < 2)
             {
@@ -88,7 +83,7 @@ public class SceneRenderer : MonoBehaviour {
                 gathererCount = Environment.ProcessorCount - 1;
             }
             var taskCount = (uint)result / gathererCount;
-            Task<Dictionary<Int32, Boid>>[] gatheredStates = new Task<Dictionary<Int32, Boid>>[gathererCount];
+            Task<Dictionary<UInt64, Boid>>[] gatheredStates = new Task<Dictionary<UInt64, Boid>>[gathererCount];
             for (int i = 0; i < gathererCount; i++)
             {
                 uint start = (uint)(i * taskCount);
@@ -153,13 +148,13 @@ public class SceneRenderer : MonoBehaviour {
         return newBoid;
     }
 
-    private Dictionary<Int32, Boid> stateGatherer(UIntPtr sim, uint start, uint end)
+    private Dictionary<UInt64, Boid> stateGatherer(UIntPtr sim, uint start, uint end)
     {
-        Dictionary<Int32, Boid> states = new Dictionary<int, Boid>();
+        Dictionary<UInt64, Boid> states = new Dictionary<UInt64, Boid>();
         for (uint i = start; i < end; i++)
         {
-            Boid b = FFIBridge.getBoid(sim, (UIntPtr)i);
-            states.Add(b.id, b);
+            BoidObj b = FFIBridge.getBoid(sim, (UIntPtr)i);
+            states.Add(b.id, b.boid);
         }
         return states;
     }
