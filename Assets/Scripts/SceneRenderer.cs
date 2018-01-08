@@ -21,9 +21,9 @@ public class SceneRenderer : MonoBehaviour {
 
     private float updateCounter = 0.0f;
     private int updatesCalled = 0;
-    private Dictionary<Int32, GameObject> objects;
+    private Dictionary<UInt64, GameObject> objects;
     private Thread stateReaderThread;
-    private volatile Dictionary<Int32, Boid> states;
+    private volatile Dictionary<UInt64, ReturnObj> states;
     private volatile bool running = true;
     private volatile int engineSteps = 0;
     private volatile UIntPtr sim;
@@ -33,8 +33,8 @@ public class SceneRenderer : MonoBehaviour {
     void Start ()
     {
         boidCount = (UIntPtr)PlayerPrefs.GetInt(MenuHandler.countKey, MenuHandler.defaultCount);
-        objects = new Dictionary<Int32, GameObject>();
-        states = new Dictionary<Int32, Boid>();
+        objects = new Dictionary<UInt64, GameObject>();
+        states = new Dictionary<UInt64, ReturnObj>();
         stateReaderThread = new Thread(StateReader);
         stateReaderThread.Start();
     }
@@ -57,16 +57,18 @@ public class SceneRenderer : MonoBehaviour {
         var renderStates = states;
         foreach (var id in renderStates.Keys)
         {
+            // Add the object if it doesn't exist
             if (!objects.ContainsKey(id))
             {
-                var newBoid = InitialiseBoid(renderStates[id].colour);
-                objects.Add(id, newBoid);
+                GameObject newObject = InitialiseGameObject(renderStates[id]);
+                objects.Add(id, newObject);
             }
-            objects[id].transform.position = renderStates[id].position;
-            objects[id].transform.rotation = Quaternion.LookRotation(renderStates[id].direction, Vector3.up);
+            // Process the object's state
+            ProcessObject(id, renderStates);
         }
     }
 
+    // Function to be fun off of the main thread that will tight loop the fungine and collect the states back from it
     private void StateReader()
     {
         sim = FFIBridge.newSim(boidCount);
@@ -77,22 +79,22 @@ public class SceneRenderer : MonoBehaviour {
         {
             // Step the engine forward once
             UIntPtr result = FFIBridge.step(sim, timeStep);
-            Dictionary<Int32, Boid> newState = new Dictionary<Int32, Boid>();
-            int gathererCount;
+            Dictionary<UInt64, ReturnObj> newState = new Dictionary<UInt64, ReturnObj>();
+            UInt64 gathererCount;
             if (Environment.ProcessorCount < 2)
             {
                 gathererCount = 1;
             }
             else
             {
-                gathererCount = Environment.ProcessorCount - 1;
+                gathererCount = (UInt64)Environment.ProcessorCount - 1;
             }
-            var taskCount = (uint)result / gathererCount;
-            Task<Dictionary<Int32, Boid>>[] gatheredStates = new Task<Dictionary<Int32, Boid>>[gathererCount];
-            for (int i = 0; i < gathererCount; i++)
+            var taskCount = (UInt64)result / gathererCount;
+            Task<Dictionary<UInt64, ReturnObj>>[] gatheredStates = new Task<Dictionary<UInt64, ReturnObj>>[gathererCount];
+            for (UInt64 i = 0; i < gathererCount; i++)
             {
-                uint start = (uint)(i * taskCount);
-                uint end = (uint)(taskCount * (i + 1));
+                UInt64 start = (i * taskCount);
+                UInt64 end = (taskCount * (i + 1));
                 if (i == gathererCount - 1)
                 {
                     end = (uint)result;
@@ -124,6 +126,44 @@ public class SceneRenderer : MonoBehaviour {
         FFIBridge.destroySim(sim);
     }
 
+    // Process an updated state from the fungine
+    private void ProcessObject(UInt64 id, Dictionary<UInt64, ReturnObj> renderStates)
+    {
+        switch (renderStates[id].objType)
+        {
+            case ObjType.Player:
+                objects[id].transform.position = renderStates[id].player.position;
+                objects[id].transform.rotation = Quaternion.LookRotation(renderStates[id].player.direction, Vector3.up);
+                break;
+            case ObjType.Boid:
+                objects[id].transform.position = renderStates[id].boid.position;
+                objects[id].transform.rotation = Quaternion.LookRotation(renderStates[id].boid.direction, Vector3.up);
+                break;
+            case ObjType.NoObj:
+            default:
+                // Do nothing
+                break;
+        }
+    }
+
+    // Initialise a new Unity GameObject from the state from the fungine
+    private GameObject InitialiseGameObject(ReturnObj obj)
+    {
+        GameObject newObject;
+        switch (obj.objType)
+        {
+            case ObjType.Boid:
+                newObject = InitialiseBoid(obj.boid.colour);
+                break;
+            case ObjType.Player:
+            case ObjType.NoObj:
+            default:
+                newObject = null;
+                break;
+        }
+        return newObject;
+    }
+
     // Helper function to create a new boid GameObject in the correct colour
     private GameObject InitialiseBoid(BoidColourKind colour)
     {
@@ -153,12 +193,13 @@ public class SceneRenderer : MonoBehaviour {
         return newBoid;
     }
 
-    private Dictionary<Int32, Boid> stateGatherer(UIntPtr sim, uint start, uint end)
+    // Gather object states from the fungine
+    private Dictionary<UInt64, ReturnObj> stateGatherer(UIntPtr sim, UInt64 start, UInt64 end)
     {
-        Dictionary<Int32, Boid> states = new Dictionary<int, Boid>();
-        for (uint i = start; i < end; i++)
+        Dictionary<UInt64, ReturnObj> states = new Dictionary<UInt64, ReturnObj>();
+        for (UInt64 i = start; i < end; i++)
         {
-            Boid b = FFIBridge.getBoid(sim, (UIntPtr)i);
+            ReturnObj b = FFIBridge.getObj(sim, (UIntPtr)i);
             states.Add(b.id, b);
         }
         return states;

@@ -4,6 +4,13 @@ using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
+public enum ObjType
+{
+    Boid,
+    Player,
+    NoObj
+}
+
 public enum BoidColourKind
 {
     Green = 0,
@@ -20,7 +27,22 @@ public struct Boid
     public Vector3 position { get; set; }
     public Vector3 direction { get; set; }
     public BoidColourKind colour { get; set; }
-    public Int32 id { get; set; }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct Player
+{
+    public Vector3 position { get; set; }
+    public Vector3 direction { get; set; }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct ReturnObj
+{
+    public UInt64 id { get; set; }
+    public ObjType objType { get; set; }
+    public Boid boid { get; set; }
+    public Player player { get; set; }
 }
 
 public static class FFIBridge
@@ -36,7 +58,7 @@ public static class FFIBridge
     public static extern UIntPtr step(UIntPtr sim, float frameTime);
 
     [DllImport("rustboidslib")]
-    public static extern Boid getBoid(UIntPtr sim, UIntPtr index);
+    public static extern ReturnObj getObj(UIntPtr sim, UIntPtr index);
 
     [DllImport("rustboidslib")]
     public static extern void destroySim(UIntPtr sim);
