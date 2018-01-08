@@ -146,7 +146,7 @@ MonoBehaviour:
   OrangeBoid: {fileID: 1038561667623260, guid: 5597122fb24d3ca4db9f5f297b197a96, type: 2}
   PurpleBoid: {fileID: 1728688999412370, guid: fae5e294524844e498246eca62d6b36b, type: 2}
   YellowBoid: {fileID: 1486249882957454, guid: 23ddac5ef5db65949a2ed81be3487c24, type: 2}
-  Player: {fileID: 1247726666300722, guid: 16dfd88054d4b514ba40fb542eb164ae, type: 2}
+  Player: {fileID: 1500605915764930, guid: 64c8c8a673cd30d4c96bb84fe0bf52c9, type: 2}
 --- !u!4 &1031726433
 Transform:
   m_ObjectHideFlags: 0
