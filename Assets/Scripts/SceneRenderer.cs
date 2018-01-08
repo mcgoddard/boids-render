@@ -18,6 +18,7 @@ public class SceneRenderer : MonoBehaviour {
     public GameObject OrangeBoid;
     public GameObject PurpleBoid;
     public GameObject YellowBoid;
+    public GameObject Player;
 
     private float updateCounter = 0.0f;
     private int updatesCalled = 0;
@@ -156,6 +157,8 @@ public class SceneRenderer : MonoBehaviour {
                 newObject = InitialiseBoid(obj.boid.colour);
                 break;
             case ObjType.Player:
+                newObject = InitialisePlayer();
+                break;
             case ObjType.NoObj:
             default:
                 newObject = null;
@@ -191,6 +194,12 @@ public class SceneRenderer : MonoBehaviour {
                 break;
         }
         return newBoid;
+    }
+
+    // Helper function to create a new player GameObject
+    private GameObject InitialisePlayer()
+    {
+        return GameObject.Instantiate(Player);
     }
 
     // Gather object states from the fungine
