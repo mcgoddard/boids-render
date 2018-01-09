@@ -8,6 +8,8 @@ public enum ObjType
 {
     Boid,
     Player,
+    Plane,
+    Tree,
     NoObj
 }
 
@@ -21,6 +23,12 @@ public enum BoidColourKind
     Yellow
 }
 
+public enum PlaneKind
+{
+    Transparent,
+    Ground
+}
+
 [StructLayout(LayoutKind.Sequential)]
 public struct Boid
 {
@@ -31,6 +39,23 @@ public struct Boid
 
 [StructLayout(LayoutKind.Sequential)]
 public struct Player
+{
+    public Vector3 position { get; set; }
+    public Vector3 direction { get; set; }
+    public Vector2 mouse_look { get; set; }
+    public Vector2 smooth_look { get; set; }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct Plane
+{
+    public Vector3 position { get; set; }
+    public Vector3 direction { get; set; }
+    public PlaneKind texturing { get; set; }
+}
+
+[StructLayout(LayoutKind.Sequential)]
+public struct Tree
 {
     public Vector3 position { get; set; }
     public Vector3 direction { get; set; }
