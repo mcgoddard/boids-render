@@ -29,6 +29,8 @@ public class SceneRenderer : MonoBehaviour {
     private volatile int engineSteps = 0;
     private volatile UIntPtr sim;
     private volatile UIntPtr boidCount;
+    private volatile FirstPersonController player;
+    private UInt64 playerId;
 
     // Use this for initialization
     void Start ()
@@ -78,6 +80,11 @@ public class SceneRenderer : MonoBehaviour {
         float timeStep = 0;
         while (running)
         {
+            // Check for player input
+            if (player != null)
+            {
+                FFIBridge.addMovement(sim, playerId, player.forwardSpeed, player.straffeSpeed, player.mouseInput);
+            }
             // Step the engine forward once
             UIntPtr result = FFIBridge.step(sim, timeStep);
             Dictionary<UInt64, ReturnObj> newState = new Dictionary<UInt64, ReturnObj>();
@@ -158,6 +165,8 @@ public class SceneRenderer : MonoBehaviour {
                 break;
             case ObjType.Player:
                 newObject = InitialisePlayer();
+                playerId = obj.id;
+                player = newObject.GetComponent<FirstPersonController>();
                 break;
             case ObjType.NoObj:
             default:
