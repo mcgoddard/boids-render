@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657844, g: 0.49641222, b: 0.5748171, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657898, g: 0.4964133, b: 0.5748178, a: 1}
 --- !u!157 &3
 LightmapSettings:
   m_ObjectHideFlags: 0
@@ -147,6 +147,9 @@ MonoBehaviour:
   PurpleBoid: {fileID: 1728688999412370, guid: fae5e294524844e498246eca62d6b36b, type: 2}
   YellowBoid: {fileID: 1486249882957454, guid: 23ddac5ef5db65949a2ed81be3487c24, type: 2}
   Player: {fileID: 1500605915764930, guid: 64c8c8a673cd30d4c96bb84fe0bf52c9, type: 2}
+  Ground: {fileID: 1509307700165994, guid: d3ae23029781b5f40b75c1a581df5822, type: 2}
+  Wall: {fileID: 1643094880424696, guid: 01aaa5e9a1d96da4da7768adeaceda78, type: 2}
+  Tree: {fileID: 1457913723839568, guid: e10e09c28e6e792468cf667bba596cbe, type: 2}
 --- !u!4 &1031726433
 Transform:
   m_ObjectHideFlags: 0

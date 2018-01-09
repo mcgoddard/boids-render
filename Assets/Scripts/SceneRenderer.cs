@@ -19,6 +19,9 @@ public class SceneRenderer : MonoBehaviour {
     public GameObject PurpleBoid;
     public GameObject YellowBoid;
     public GameObject Player;
+    public GameObject Ground;
+    public GameObject Wall;
+    public GameObject Tree;
 
     private float updateCounter = 0.0f;
     private int updatesCalled = 0;
