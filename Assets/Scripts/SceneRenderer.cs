@@ -150,6 +150,8 @@ public class SceneRenderer : MonoBehaviour {
                 objects[id].transform.position = renderStates[id].boid.position;
                 objects[id].transform.rotation = Quaternion.LookRotation(renderStates[id].boid.direction, Vector3.up);
                 break;
+            case ObjType.Plane:
+            case ObjType.Tree:
             case ObjType.NoObj:
             default:
                 // Do nothing
@@ -170,6 +172,12 @@ public class SceneRenderer : MonoBehaviour {
                 newObject = InitialisePlayer();
                 playerId = obj.id;
                 player = newObject.GetComponent<FirstPersonController>();
+                break;
+            case ObjType.Tree:
+                newObject = InitialiseTree(obj.tree);
+                break;
+            case ObjType.Plane:
+                newObject = InitialisePlane(obj.plane);
                 break;
             case ObjType.NoObj:
             default:
@@ -212,6 +220,32 @@ public class SceneRenderer : MonoBehaviour {
     private GameObject InitialisePlayer()
     {
         return GameObject.Instantiate(Player);
+    }
+
+    private GameObject InitialiseTree(Tree treeState)
+    {
+        var treeObj = GameObject.Instantiate(Tree);
+        treeObj.transform.position = treeState.position;
+        treeObj.transform.rotation = Quaternion.LookRotation(treeState.direction, Vector3.up);
+        return treeObj;
+    }
+
+    private GameObject InitialisePlane(Plane planeState)
+    {
+        GameObject planeObj;
+        switch (planeState.texturing)
+        {
+            case PlaneKind.Ground:
+                planeObj = GameObject.Instantiate(Ground);
+                break;
+            case PlaneKind.Transparent:
+            default:
+                planeObj = GameObject.Instantiate(Wall);
+                break;
+        }
+        planeObj.transform.position = planeState.position;
+        planeObj.transform.rotation = Quaternion.LookRotation(planeState.direction, Vector3.up);
+        return planeObj;
     }
 
     // Gather object states from the fungine

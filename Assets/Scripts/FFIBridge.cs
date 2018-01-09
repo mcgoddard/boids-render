@@ -68,6 +68,8 @@ public struct ReturnObj
     public ObjType objType { get; set; }
     public Boid boid { get; set; }
     public Player player { get; set; }
+    public Plane plane { get; set; }
+    public Tree tree { get; set; }
 }
 
 public static class FFIBridge
