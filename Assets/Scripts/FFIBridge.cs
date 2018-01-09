@@ -61,5 +61,8 @@ public static class FFIBridge
     public static extern ReturnObj getObj(UIntPtr sim, UIntPtr index);
 
     [DllImport("rustboidslib")]
+    public static extern void addMovement(UIntPtr sim, UInt64 id, float forward, float strafe, Vector2 mouse);
+
+    [DllImport("rustboidslib")]
     public static extern void destroySim(UIntPtr sim);
 }
