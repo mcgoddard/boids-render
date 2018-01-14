@@ -1,7 +1,4 @@
-﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Bson;
-using Newtonsoft.Json.Linq;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Diagnostics;
@@ -9,8 +6,10 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
+using System.Runtime.InteropServices;
 using UnityEngine;
-using System.Threading.Collections;
+using System.Threading.Tasks;
+using System.Linq;
 
 public class SceneRenderer : MonoBehaviour {
     public GameObject GreenBoid;
@@ -19,234 +18,245 @@ public class SceneRenderer : MonoBehaviour {
     public GameObject OrangeBoid;
     public GameObject PurpleBoid;
     public GameObject YellowBoid;
+    public GameObject Player;
+    public GameObject Ground;
+    public GameObject Wall;
+    public GameObject Tree;
 
-    private UdpClient udp;
-    private ConcurrentQueue<Boid> newObjects;
-    private ConcurrentQueue<byte[]> receivedBytes;
-    private List<GameObject> objects;
-    private Dictionary<long, Boid> states;
-    private Thread readThread;
-    private Thread stdoutThread;
-    private Thread stderrThread;
-    private Thread[] deserializers = new Thread[2];
-    private Process boidsProc;
-    private bool running = true;
     private float updateCounter = 0.0f;
-    private int updatesReceived = 0;
     private int updatesCalled = 0;
-    private int updatesDeserialized = 0;
-    private class Boid 
-    {
-        public long id { get; set; }
-        public string colour { get; set; }
-        public Vector3 position { get; set; }
-        public Vector3 direction { get; set; }
-    }
+    private Dictionary<UInt64, GameObject> objects;
+    private Thread stateReaderThread;
+    private volatile Dictionary<UInt64, ReturnObj> states;
+    private volatile bool running = true;
+    private volatile int engineSteps = 0;
+    private volatile UIntPtr sim;
+    private volatile UIntPtr boidCount;
+    private volatile FirstPersonController player;
+    private UInt64 playerId;
 
-	// Use this for initialization
-	void Start ()
+    // Use this for initialization
+    void Start ()
     {
-        receivedBytes = new ConcurrentQueue<byte[]>();
-        newObjects = new ConcurrentQueue<Boid>();
-        objects = new List<GameObject>();
-        states = new Dictionary<long, Boid>();
-        udp = new UdpClient(4794);
-        for (int i = 0; i < deserializers.Length; i++)
-        {
-            deserializers[i] = new Thread(Deserizer);
-            deserializers[i].Start();
-        }
-        readThread = new Thread(UdpListener);
-        readThread.Start();
-        boidsProc = new Process();
-        boidsProc.StartInfo.UseShellExecute = false;
-        if (Application.platform == RuntimePlatform.WindowsPlayer || Application.platform == RuntimePlatform.WindowsEditor)
-        {
-            boidsProc.StartInfo.FileName = "boids-builds/windows/rust-boids.exe";
-        }
-        else if (Application.platform == RuntimePlatform.OSXPlayer || Application.platform == RuntimePlatform.OSXEditor)
-        {
-            boidsProc.StartInfo.FileName = "boids-builds/osx/rust-boids";
-        }
-        else
-        {
-            throw new Exception(String.Format("No boids build available for unknown platform: {0}", Application.platform));
-        }
-        boidsProc.StartInfo.CreateNoWindow = true;
-        boidsProc.StartInfo.RedirectStandardOutput = true;
-        boidsProc.StartInfo.RedirectStandardError = true;
-        boidsProc.Start();
-        stdoutThread = new Thread(StdoutListener);
-        stdoutThread.Start();
-        stderrThread = new Thread(StderrListener);
-        stderrThread.Start();
+        boidCount = (UIntPtr)PlayerPrefs.GetInt(MenuHandler.countKey, MenuHandler.defaultCount);
+        objects = new Dictionary<UInt64, GameObject>();
+        states = new Dictionary<UInt64, ReturnObj>();
+        stateReaderThread = new Thread(StateReader);
+        stateReaderThread.Start();
     }
 	
 	// Update is called once per frame
 	void Update ()
     {
+        // Benchmarking debug
         updateCounter += Time.deltaTime;
         updatesCalled += 1;
         if (updateCounter > 10.0f)
         {
-            UnityEngine.Debug.Log(String.Format("Average states received per second: {0}", updatesReceived / 10.0));
-            UnityEngine.Debug.Log(String.Format("Average states deserialized per second: {0}", updatesDeserialized / 10.0));
             UnityEngine.Debug.Log(String.Format("Average frames processed per second: {0}", updatesCalled / 10.0));
-            updateCounter = 0.0f;
-            updatesReceived = 0;
+            UnityEngine.Debug.Log(String.Format("Average engine steps per second: {0}", engineSteps / 10.0));
+            updateCounter = 0;
             updatesCalled = 0;
-            updatesDeserialized = 0;
+            engineSteps = 0;
         }
-        while (newObjects.Count > 0)
+        // Perform update
+        var renderStates = states;
+        foreach (var id in renderStates.Keys)
         {
-            Boid newObject;
-            if (newObjects.TryDequeue(out newObject))
+            // Add the object if it doesn't exist
+            if (!objects.ContainsKey(id))
             {
-                var id = newObject.id;
-                if (!states.ContainsKey(id))
+                GameObject newObject = InitialiseGameObject(renderStates[id]);
+                objects.Add(id, newObject);
+            }
+            // Process the object's state
+            ProcessObject(id, renderStates);
+        }
+    }
+
+    // Function to be fun off of the main thread that will tight loop the fungine and collect the states back from it
+    private void StateReader()
+    {
+        sim = FFIBridge.newSim(boidCount);
+        Stopwatch stopWatch = new Stopwatch();
+        stopWatch.Start();
+        float timeStep = 0;
+        while (running)
+        {
+            // Check for player input
+            if (player != null)
+            {
+                FFIBridge.addMovement(sim, playerId, player.forwardSpeed, player.straffeSpeed, player.mouseInput);
+            }
+            // Step the engine forward once
+            UIntPtr result = FFIBridge.step(sim, timeStep);
+            Dictionary<UInt64, ReturnObj> newState = new Dictionary<UInt64, ReturnObj>();
+            UInt64 gathererCount;
+            if (Environment.ProcessorCount < 2)
+            {
+                gathererCount = 1;
+            }
+            else
+            {
+                gathererCount = (UInt64)Environment.ProcessorCount - 1;
+            }
+            var taskCount = (UInt64)result / gathererCount;
+            Task<Dictionary<UInt64, ReturnObj>>[] gatheredStates = new Task<Dictionary<UInt64, ReturnObj>>[gathererCount];
+            for (UInt64 i = 0; i < gathererCount; i++)
+            {
+                UInt64 start = (i * taskCount);
+                UInt64 end = (taskCount * (i + 1));
+                if (i == gathererCount - 1)
                 {
-                    var newBoid = InitialiseBoid(newObject.colour);
-                    newBoid.name = id.ToString();
-                    objects.Add(newBoid);
-                    states.Add(id, newObject);
+                    end = (uint)result;
                 }
+                gatheredStates[i] = Task.Run(() => stateGatherer(sim, start, end));
             }
-        }
-        foreach (var boid in objects)
-        {
-            long id = long.Parse(boid.name);
-            var state = states[id];
-            var newPos = state.position;
-            var newDirection = state.direction;
-            try
+            Task.WaitAll(gatheredStates);
+            newState = gatheredStates.Select(t => t.Result).SelectMany(dict => dict)
+                         .ToDictionary(pair => pair.Key, pair => pair.Value);
+            states = newState;
+            engineSteps++;
+            long elaspsedTime = stopWatch.ElapsedMilliseconds;
+            if (elaspsedTime < 5)
             {
-                boid.transform.position = newPos;
-                boid.transform.rotation = Quaternion.LookRotation(newDirection, Vector3.up);
+                Thread.Sleep((int)(5 - elaspsedTime));
             }
-            catch (Exception ex)
-            {
-                UnityEngine.Debug.Log(String.Format("Exception caught processing boid:\n{0}", ex.Message));
-            }
+            timeStep = stopWatch.ElapsedMilliseconds / 1000.0f;
+            stopWatch.Restart();
         }
+        UnityEngine.Debug.Log("Closing state reader thread...");
     }
 
     // Called during shutdown
     void OnDestroy()
     {
+        // Flag the program as shutting down, wait for the reader to exit, then free the Rust memory
         running = false;
-        if (boidsProc != null && !boidsProc.HasExited)
-        {
-            boidsProc.Kill();
-        }
+        while (stateReaderThread.IsAlive) { }
+        FFIBridge.destroySim(sim);
     }
 
-    private void UdpListener()
+    // Process an updated state from the fungine
+    private void ProcessObject(UInt64 id, Dictionary<UInt64, ReturnObj> renderStates)
     {
-        while (running)
+        switch (renderStates[id].objType)
         {
-            IPEndPoint endpoint = new IPEndPoint(IPAddress.Loopback, 0);
-            byte[] receiveBytes = udp.Receive(ref endpoint);
-            if (receiveBytes != null && receiveBytes.Length > 0)
-            {
-                receivedBytes.Enqueue(receiveBytes);
-                updatesReceived++;
-            }
+            case ObjType.Player:
+                objects[id].transform.position = renderStates[id].player.position;
+                objects[id].transform.rotation = Quaternion.LookRotation(renderStates[id].player.direction, Vector3.up);
+                break;
+            case ObjType.Boid:
+                objects[id].transform.position = renderStates[id].boid.position;
+                objects[id].transform.rotation = Quaternion.LookRotation(renderStates[id].boid.direction, Vector3.up);
+                break;
+            case ObjType.Plane:
+            case ObjType.Tree:
+            case ObjType.NoObj:
+            default:
+                // Do nothing
+                break;
         }
     }
 
-    private void Deserizer()
+    // Initialise a new Unity GameObject from the state from the fungine
+    private GameObject InitialiseGameObject(ReturnObj obj)
     {
-        while (running)
+        GameObject newObject;
+        switch (obj.objType)
         {
-            try
-            {
-                byte[] receiveBytes;
-                if (receivedBytes.TryDequeue(out receiveBytes))
-                {
-                    string serialisedObj = System.Text.Encoding.Default.GetString(receiveBytes);
-                    if (!String.IsNullOrEmpty(serialisedObj))
-                    {
-                        var deserialisedObj = JsonConvert.DeserializeObject<Boid>(serialisedObj);
-                        if (deserialisedObj != null)
-                        {
-                            long id = deserialisedObj.id;
-                            if (states.ContainsKey(id))
-                            {
-                                states[id] = deserialisedObj;
-                            }
-                            else
-                            {
-                                newObjects.Enqueue(deserialisedObj);
-                            }
-                            updatesDeserialized++;
-                        }
-                    }
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                // Ignore (queue is empty)
-            }
-            catch (Exception ex)
-            {
-                UnityEngine.Debug.Log(String.Format("Error in deserializer: {0}", ex.StackTrace));
-            }
+            case ObjType.Boid:
+                newObject = InitialiseBoid(obj.boid.colour);
+                break;
+            case ObjType.Player:
+                newObject = InitialisePlayer();
+                playerId = obj.id;
+                player = newObject.GetComponent<FirstPersonController>();
+                break;
+            case ObjType.Tree:
+                newObject = InitialiseTree(obj.tree);
+                break;
+            case ObjType.Plane:
+                newObject = InitialisePlane(obj.plane);
+                break;
+            case ObjType.NoObj:
+            default:
+                newObject = null;
+                break;
         }
+        return newObject;
     }
 
-    private void StdoutListener()
-    {
-        var stdoutStream = boidsProc.StandardOutput;
-        while (running)
-        {
-            var msg = stdoutStream.ReadLine();
-            if (!String.IsNullOrEmpty(msg))
-            {
-                UnityEngine.Debug.Log(String.Format("rust-boids: stdout: {0}", msg));
-            }
-        }
-    }
-
-    private void StderrListener()
-    {
-        var stderrStream = boidsProc.StandardError;
-        while (running)
-        {
-            var msg = stderrStream.ReadLine();
-            if (!String.IsNullOrEmpty(msg))
-            {
-                UnityEngine.Debug.Log(String.Format("rust-boids: stderr: {0}", msg));
-            }
-        }
-    }
-
-    private GameObject InitialiseBoid(string colour)
+    // Helper function to create a new boid GameObject in the correct colour
+    private GameObject InitialiseBoid(BoidColourKind colour)
     {
         GameObject newBoid;
-        if (colour.Equals("Green"))
+        switch (colour)
         {
-            newBoid = GameObject.Instantiate(GreenBoid);
-        }
-        else if (colour.Equals("Blue"))
-        {
-            newBoid = GameObject.Instantiate(BlueBoid);
-        }
-        else if (colour.Equals("Red"))
-        {
-            newBoid = GameObject.Instantiate(RedBoid);
-        }
-        else if (colour.Equals("Orange"))
-        {
-            newBoid = GameObject.Instantiate(OrangeBoid);
-        }
-        else if (colour.Equals("Purple"))
-        {
-            newBoid = GameObject.Instantiate(PurpleBoid);
-        }
-        else
-        {
-            newBoid = GameObject.Instantiate(YellowBoid);
+            case BoidColourKind.Green:
+                newBoid = GameObject.Instantiate(GreenBoid);
+                break;
+            case BoidColourKind.Blue:
+                newBoid = GameObject.Instantiate(BlueBoid);
+                break;
+            case BoidColourKind.Red:
+                newBoid = GameObject.Instantiate(RedBoid);
+                break;
+            case BoidColourKind.Orange:
+                newBoid = GameObject.Instantiate(OrangeBoid);
+                break;
+            case BoidColourKind.Purple:
+                newBoid = GameObject.Instantiate(PurpleBoid);
+                break;
+            case BoidColourKind.Yellow:
+            default:
+                newBoid = GameObject.Instantiate(YellowBoid);
+                break;
         }
         return newBoid;
+    }
+
+    // Helper function to create a new player GameObject
+    private GameObject InitialisePlayer()
+    {
+        return GameObject.Instantiate(Player);
+    }
+
+    private GameObject InitialiseTree(Tree treeState)
+    {
+        var treeObj = GameObject.Instantiate(Tree);
+        treeObj.transform.position = treeState.position;
+        treeObj.transform.rotation = Quaternion.LookRotation(treeState.direction, Vector3.up);
+        return treeObj;
+    }
+
+    private GameObject InitialisePlane(Plane planeState)
+    {
+        GameObject planeObj;
+        switch (planeState.texturing)
+        {
+            case PlaneKind.Ground:
+                planeObj = GameObject.Instantiate(Ground);
+                break;
+            case PlaneKind.Transparent:
+            default:
+                planeObj = GameObject.Instantiate(Wall);
+                break;
+        }
+        planeObj.transform.position = planeState.position;
+        planeObj.transform.rotation = Quaternion.LookRotation(planeState.direction, Vector3.up);
+        return planeObj;
+    }
+
+    // Gather object states from the fungine
+    private Dictionary<UInt64, ReturnObj> stateGatherer(UIntPtr sim, UInt64 start, UInt64 end)
+    {
+        Dictionary<UInt64, ReturnObj> states = new Dictionary<UInt64, ReturnObj>();
+        for (UInt64 i = start; i < end; i++)
+        {
+            ReturnObj b = FFIBridge.getObj(sim, (UIntPtr)i);
+            states.Add(b.id, b);
+        }
+        return states;
     }
 }
