@@ -47,10 +47,17 @@ public struct Player
 }
 
 [StructLayout(LayoutKind.Sequential)]
+public struct NativeQuaternion
+{
+    public float scaler { get; set; }
+    public Vector3 vector { get; set; }
+}
+
+[StructLayout(LayoutKind.Sequential)]
 public struct Plane
 {
     public Vector3 position { get; set; }
-    public Vector3 direction { get; set; }
+    public NativeQuaternion rotation { get; set; }
     public PlaneKind texturing { get; set; }
 }
 
