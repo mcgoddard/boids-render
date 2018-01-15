@@ -243,8 +243,8 @@ public class SceneRenderer : MonoBehaviour {
                 planeObj = GameObject.Instantiate(Wall);
                 break;
         }
-        planeObj.transform.position = planeState.position;
         planeObj.transform.rotation = Quaternion.LookRotation(planeState.direction, Vector3.up);
+        planeObj.transform.position = planeState.position;
         return planeObj;
     }
 
