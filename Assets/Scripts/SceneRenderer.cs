@@ -118,9 +118,9 @@ public class SceneRenderer : MonoBehaviour {
             states = newState;
             engineSteps++;
             long elaspsedTime = stopWatch.ElapsedMilliseconds;
-            if (elaspsedTime < 5)
+            if (elaspsedTime < 10)
             {
-                Thread.Sleep((int)(5 - elaspsedTime));
+                Thread.Sleep((int)(10 - elaspsedTime));
             }
             timeStep = stopWatch.ElapsedMilliseconds / 1000.0f;
             stopWatch.Restart();
