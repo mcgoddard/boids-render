@@ -66,6 +66,7 @@ public struct Tree
 {
     public Vector3 position { get; set; }
     public Vector3 direction { get; set; }
+    public float scale { get; set; }
 }
 
 [StructLayout(LayoutKind.Sequential)]

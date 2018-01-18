@@ -227,6 +227,7 @@ public class SceneRenderer : MonoBehaviour {
         var treeObj = GameObject.Instantiate(Tree);
         treeObj.transform.position = treeState.position;
         treeObj.transform.rotation = Quaternion.LookRotation(treeState.direction, Vector3.up);
+        treeObj.transform.localScale = new Vector3(treeState.scale, treeState.scale, treeState.scale);
         return treeObj;
     }
 
